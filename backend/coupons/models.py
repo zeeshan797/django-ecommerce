@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 
@@ -33,10 +34,11 @@ class Coupon(models.Model):
     def discount_amount(self, order_amount):
         """Calculate the discount amount based on the order amount."""
         if not self.is_valid:
-            return 0
+            return Decimal('0')
+        order_amount = Decimal(str(order_amount))
         if order_amount < self.minimum_order_amount:
-            return 0
+            return Decimal('0')
         if self.discount_type == 'percentage':
-            return order_amount * (self.discount_value / 100)
+            return order_amount * (self.discount_value / Decimal('100'))
         else:  # fixed
-            return min(self.discount_value, order_amount)  # Ensure discount does not exceed order amount
+            return min(self.discount_value, order_amount)
