@@ -73,7 +73,7 @@ CORS_ORIGIN_ALLOW_ALL=True
 ### Setup
 - Created a Vite project with React and TypeScript template
 - Installed dependencies:
-  - TailwindCSS (via `@tailwindcss/cli` and `tailwindcss`)
+  - TailwindCSS (via `tailwindcss`, `@tailwindcss/postcss` for PostCSS processing, and `@tailwindcss/cli` for CLI)
   - PostCSS and Autoprefixer
   - Framer Motion (for animations)
   - TanStack Query (for server state)
@@ -87,13 +87,11 @@ CORS_ORIGIN_ALLOW_ALL=True
     - tailwind-merge
     - tailwindcss-animate
     - @radix-ui/react-icons
-- Initialized TailwindCSS configuration (`tailwind.config.js` and `postcss.config.js`)
+- Configured TailwindCSS with ES module syntax in `tailwind.config.js` and `postcss.config.js` (due to project's "type": "module")
 - Set up shadcn/ui by creating `components.json` and configuring path aliases in `tsconfig.app.json`
 - Created directory structure:
   - `src/components` (for shadcn/ui components)
-  - `src/lib/utils` (for utility functions)
-
-### How to Run
+  - `src/lib/utils` (for utility functions)### How to Run
 1. Navigate to the frontend directory:
    ```bash
    cd frontend
@@ -169,3 +167,4 @@ In Phase 1, we will:
 2. Customize the Django Admin interface for managing products, categories, orders, and users.
 3. Run migrations to create the database schema.
 4. Add CORS support (install and configure django-corsheaders) to allow frontend-backend communication during development.
+

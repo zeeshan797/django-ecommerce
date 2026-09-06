@@ -22,3 +22,5 @@ frontend/.env.local
 .idea/
 .DS_Store
 Thumbs.db
+.agents/
+
