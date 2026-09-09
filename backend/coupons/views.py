@@ -5,28 +5,19 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Coupon
 from .serializers import CouponSerializer
 from django.utils import timezone
-from decimal import Decimal
-
-class IsAdminOrReadOnly(permissions.BasePermission):
-    """
-    Allow read-only access to non-admin users, and full access to admin users.
-    """
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user and request.user.is_staff
+from decimal import Decimal, InvalidOperation
 
 class CouponViewSet(viewsets.ModelViewSet):
     queryset = Coupon.objects.all()
     serializer_class = CouponSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [permissions.IsAdminUser]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['discount_type', 'is_active', 'valid_from', 'valid_to']
     
     def get_permissions(self):
         if self.action == 'validate':
             return [permissions.AllowAny()]
-        return super().get_permissions()
+        return [permissions.IsAdminUser()]
     
     @action(detail=False, methods=['post'])
     def validate(self, request):
@@ -35,7 +26,7 @@ class CouponViewSet(viewsets.ModelViewSet):
         order_amount = request.data.get('order_amount', 0)
         
         if not code:
-            return Response({'error': 'Coupon code is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'valid': False, 'error': 'Coupon code is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             coupon = Coupon.objects.get(code=code)
@@ -45,7 +36,11 @@ class CouponViewSet(viewsets.ModelViewSet):
         if not coupon.is_valid:
             return Response({'valid': False, 'error': 'Coupon is not valid or has expired'})
         
-        order_amount_decimal = Decimal(str(order_amount))
+        try:
+            order_amount_decimal = Decimal(str(order_amount))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({'valid': False, 'error': 'Invalid order amount.'}, status=status.HTTP_400_BAD_REQUEST)
+            
         discount_amount = coupon.discount_amount(order_amount_decimal)
         
         return Response({

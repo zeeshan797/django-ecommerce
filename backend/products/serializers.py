@@ -10,7 +10,7 @@ class CategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'product_count']
     
     def get_product_count(self, obj):
-        return obj.products.count()
+        return getattr(obj, 'product_count', obj.products.count())
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:

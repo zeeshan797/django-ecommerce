@@ -32,14 +32,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
         Optionally restrict reviews to those for a specific product,
         or to reviews by the current user.
         """
-        queryset = Review.objects.all()
+        queryset = Review.objects.select_related('user', 'product')
         product_id = self.request.query_params.get('product', None)
         if product_id is not None:
             queryset = queryset.filter(product_id=product_id)
         
         # If user wants to see their own reviews
         mine = self.request.query_params.get('mine', None)
-        if mine is not None and mine.lower() == 'true':
+        if mine is not None and mine.lower() == 'true' and self.request.user.is_authenticated:
             queryset = queryset.filter(user=self.request.user)
             
         return queryset

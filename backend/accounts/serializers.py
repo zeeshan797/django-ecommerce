@@ -1,6 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile
+from .models import UserProfile, Address
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ['id', 'full_name', 'phone', 'address_line_1', 'address_line_2', 
+                  'city', 'state', 'postal_code', 'country', 'is_default', 'address_type', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -8,12 +15,26 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['phone_number', 'address', 'city', 'state', 'postal_code', 'country', 'date_of_birth', 'profile_picture']
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(read_only=True)
+    profile = UserProfileSerializer(required=False)
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
-        read_only_fields = ['id']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'profile']
+        read_only_fields = ['id', 'is_staff']
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        if profile_data is not None:
+            profile, _ = UserProfile.objects.get_or_create(user=instance)
+            for attr, value in profile_data.items():
+                setattr(profile, attr, value)
+            profile.save()
+            
+        return instance
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
