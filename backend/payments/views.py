@@ -8,29 +8,30 @@ from orders.models import Order
 
 class IsPaymentOwner(permissions.BasePermission):
     """
-    Object-level permission to only allow owners of a payment to view it.
-    Assumes the payment has an order with a user attribute.
+    Object-level permission:
+    - Staff users can perform any action.
+    - Regular users can only retrieve payments for their own orders.
     """
     def has_object_permission(self, request, view, obj):
-        # Staff users can view all payments
         if request.user.is_staff:
             return True
-        # Regular users can only view payments for their own orders
-        return obj.order.user == request.user
+        if view.action == 'retrieve':
+            return obj.order.user == request.user
+        return False
 
 class PaymentViewSet(viewsets.ModelViewSet):
-    queryset = Payment.objects.all()
+    queryset = Payment.objects.select_related('order__user')
     serializer_class = PaymentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsPaymentOwner]
     filter_backends = []
     ordering_fields = ['created_at']
     ordering = ['-created_at']
     
     def get_queryset(self):
-        # Staff can see all payments, regular users only see payments for their own orders
+        base_qs = Payment.objects.select_related('order__user')
         if self.request.user.is_staff:
-            return Payment.objects.all()
-        return Payment.objects.filter(order__user=self.request.user)
+            return base_qs
+        return base_qs.filter(order__user=self.request.user)
     
     @action(detail=False, methods=['post'])
     def process_cod(self, request):
@@ -50,27 +51,17 @@ class PaymentViewSet(viewsets.ModelViewSet):
             return Response({'error': 'You do not have permission to pay for this order'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
-        # Check if order is pending
-        if order.payment_status != 'pending':
-            return Response({'error': 'Order is not pending payment'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
-        
         # Check if payment already exists for this order
         if hasattr(order, 'payment'):
-            return Response({'error': 'Payment already exists for this order'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
+            return Response(PaymentSerializer(order.payment).data, status=status.HTTP_200_OK)
         
-        # Create payment
+        # Create payment record for COD
         payment = Payment.objects.create(
             order=order,
             payment_method='cod',
             amount=order.total_amount,
-            status='paid'  # COD is considered paid immediately (will be paid on delivery)
+            status='pending'  # Paid upon delivery
         )
-        
-        # Update order payment status
-        order.payment_status = 'paid'
-        order.save()
         
         serializer = PaymentSerializer(payment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
